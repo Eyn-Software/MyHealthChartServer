@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign In</title>
+</head>
+<body>
+    <form action="Router.php" method="POST">
+
+        Name: <input type="text" name="Name">
+        Birthday: <input type="date" name ="Birthday" value="<?php echo date('Y-m-d'); ?>"/>
+        Email: <input type="text" name="Email">
+        Password: <input type="password" name="Password">
+
+        <input type="submit" value="Submit">
+    </form>
+</body>
+</html>
