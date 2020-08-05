@@ -49,6 +49,29 @@ class Database
         ]);
         return $Statement;
     }
+    //Adds a user and returns them
+    public function AddUserWGet(string $Name, string $Birthday, int $AId)
+    {
+        $Statement = $this->pdo->prepare("insert into User(Name, Birthday, AId)
+                                                    values (:Name, :Birthday, :AId)");
+        $Statement->execute([
+            ':Name' => $Name,
+            ':Birthday' => $Birthday,
+            ':AId' => $AId
+        ]);
+        $Statement = $this->pdo->prepare("select * from User 
+                                                    where Id = :Id");
+        $Statement->execute([
+            ':Id' => (int)$this->pdo->lastInsertId()
+        ]);
+        $ReturnString = "";
+        foreach($Statement as $row)
+        {
+            $ReturnString = implode("///", $row);
+            $ReturnString .= "///";
+        }
+        return $ReturnString;
+    }
     //Adds a doctor to the database
     public function AddDoctor(int $UId, string $Name, string $Practice, string $Type,
                         string $Address, string $Email, string $Phone)
@@ -125,7 +148,7 @@ class Database
         }
         else
         {
-            return 'Success';
+            return $this->pdo->lastInsertId();
         }
     }
     public function AddVaccine(string $Name, string $Date, int $AId, int $DId, int $UId)
@@ -148,6 +171,104 @@ class Database
             return 'Success';
         }
     }
+    public function AddCondition(string $Type, int $UId)
+    {
+        $Statement = $this->pdo->prepare("insert into Conditions(Type) values (:Type)");
+        $Statement->execute([
+            ':Type' => $Type
+        ]);
+        if (strcmp($Statement->errorCode(), "23000") === 0 || $Statement->rowCount()) {
+            $Statement = $this->pdo->prepare("insert into Conditions_User_Junction(CId, UId)
+                                                values(:Type, :UId)");
+            $Statement->execute([
+                ':Type' => $Type,
+                ':UId' => $UId
+            ]);
+            if (!$Statement->rowCount()) {
+                return $Statement->errorCode();
+            } else {
+                return 'Success';
+            }
+        }
+        return $Statement->errorInfo();
+    }
+    public function AddAllergy(string $Type, int $UId)
+    {
+        $Statement = $this->pdo->prepare("insert into Allergy(Type) values (:Type)");
+        $Statement->execute([
+            ':Type' => $Type
+        ]);
+        if(strcmp($Statement->errorCode(), "23000") === 0 || $Statement->rowCount())
+        {
+            $Statement = $this->pdo->prepare("insert into User_Allergy_Junction(AId, UId)
+                                                        values(:Type, :UId)");
+            $Statement->execute([
+                ':Type' => $Type,
+                ':UId' => $UId
+            ]);
+            if(!$Statement->rowCount())
+            {
+                return $Statement->errorCode();
+            }
+            else
+            {
+                return 'Success';
+            }
+        }
+        return $Statement->errorInfo();
+    }
+    public function AddRootFolder(int $UId)
+    {
+        $Statement = $this->pdo->prepare("insert into Folder(UId, ParentFolderId, IsRoot)
+                                                    values(:UId, :PId, :IsRoot)");
+        $Statement->execute([
+            ':UId' => $UId,
+            ':PId' => 0,
+            ':IsRoot' => true
+        ]);
+    }
+    public function AddFolder(int $UId, string $Name, string $CreationDate, int $ParentFolderId)
+    {
+        $Statement = $this->pdo->prepare("insert into Folder(UId, Name, CreationDate, ParentFolderId)
+                                                    values(:UId, :Name, :CreationDate, :PId)");
+        $Statement->execute([
+            ':UId' => $UId,
+            ':Name' => $Name,
+            ':CreationDate' => $CreationDate,
+            ':PId' => $ParentFolderId
+        ]);
+        if($Statement->rowCount())
+        {
+            return "Success";
+        }
+        else
+        {
+            return "Failure";
+        }
+    }
+    public function AddNote(int $UId, string $Name, string $Description,string $CreationDate,
+                            int $ParentFolderId)
+    {
+        $Statement = $this->pdo->prepare("insert into Note(UId, Name, Description, CreationDate, 
+                                                                        ParentFolderId)
+                                                     values(:UId, :Name, :Description, :CreationDate,
+                                                            :PId)");
+        $Statement->execute([
+            ':UId'=> $UId,
+            ':Name' => $Name,
+            ':Description' => $Description,
+            ':CreationDate' => $CreationDate,
+            ':PId' => $ParentFolderId
+        ]);
+        if($Statement->rowCount())
+        {
+            return 'Success';
+        }
+        else
+        {
+            return 'Failure';
+        }
+    }
     public function UpdateDoctor(int $Id, string $Name, string $Practice, string $Type,
                             string $Address, string $Email, string $Phone)
     {
@@ -167,6 +288,59 @@ class Database
         if(!$Statement->rowCount())
         {
             return $Statement->errorInfo();
+        }
+        return 'Success';
+    }
+    public function UpdateAppointment(int $Id, string $Date, string $Reason, string $Diagnosis, string $Aftercare)
+    {
+        $Statement = $this->pdo->prepare("update Appointment
+                                          set Date = :Date, Reason = :Reason, Diagnosis = :Diagnosis,
+                                          Aftercare = :Aftercare 
+                                          where Id = :Id");
+        $Statement->execute([
+            ':Id' => $Id,
+            ':Date' => $Date,
+            ':Reason' => $Reason,
+            ':Diagnosis' => $Diagnosis,
+            ':Aftercare' => $Aftercare]);
+        if(!$Statement->rowCount())
+        {
+            return $Statement->errorInfo();
+        }
+        return 'Success';
+    }
+    public function UpdatePrescription(int $Id, string $Name, string $StartDate, string $EndDate, string $ReminderTime)
+    {
+        $Statement = $this->pdo->prepare("update Prescription
+                                                    set Name = :Name, StartDate = :StartDate,
+                                                        EndDate = :EndDate, ReminderTime = :ReminderTime
+                                                    where Id = :Id");
+        $Statement->execute([
+            ':Id' => $Id,
+            ':Name' => $Name,
+            ':StartDate' => $StartDate,
+            ':EndDate' => $EndDate,
+            ':ReminderTime' => $ReminderTime
+        ]);
+        if(!$Statement->rowCount())
+        {
+            return $Statement->errorInfo();
+        }
+        return 'Success';
+    }
+    public function UpdateNote(int $Id, string $Name, string $Description)
+    {
+        $Statement = $this->pdo->prepare("Update Note
+                                                    set Name = :Name, Description = :Description
+                                                    where Id = :Id");
+        $Statement->execute([
+            ':Id' => $Id,
+            ':Name' => $Name,
+            ':Description' => $Description
+        ]);
+        if(!$Statement->rowCount())
+        {
+            return null;
         }
         return 'Success';
     }
@@ -259,91 +433,41 @@ class Database
             return $ReturnString;
         }
     }
-
-    //Get users on account
-    public function GetUsers(Account $Account)
-    {
-        $ReturnString = "";
-        $Statement = $this->pdo->prepare("select * from User where AId = :AId");
-        if($Statement->execute([':AId' => $Account->GetId()]))
-        {
-            foreach($Statement as $row)
-            {
-                $ReturnString .= implode("///", $row);
-                $ReturnString .= "///";
-            }
-            return $ReturnString;
-        }
-        else
-        {
-            return null;
-        }
-    }
-
-    //Gets all doctors with user
-    public function GetDoctors(int $id)
-    {
-        $ReturnString = "";
-        $Statement = $this->pdo->prepare("select Doctor.* from Doctor
-                                                    join User_Doctor_Junction on Doctor.Id = User_Doctor_Junction.DId
-                                                    where User_Doctor_Junction.UId = :UId");
-        if($Statement->execute([':UId' => $id]))
-        {
-            foreach($Statement as $row)
-            {
-                $ReturnString .= implode("///", $row);
-                $ReturnString .= "///";
-            }
-
-            return $ReturnString;
-        }
-        else
-        {
-            return null;
-        }
-    }
-
-    //Gets all appointments with user
-    public function GetAppointments(int $id)
-    {
-        $ReturnString = "";
-        $Statement = $this->pdo->prepare("select Appointment.Id, Doctor.Name, Appointment.Date 
-                                                    from Appointment
-                                                    join Doctor on Appointment.DId = Doctor.Id
-                                                    where Appointment.UId = :UId");
-        if($Statement->execute([':UId' => $id]))
-        {
-            foreach($Statement as $row)
-            {
-                $ReturnString .= implode("///",$row);
-                $ReturnString .= "///";
-            }
-            return $ReturnString;
-        }
-        else
-        {
-            return null;
-        }
-    }
     public function GetAppointment(int $id)
     {
         $ReturnString = "";
-        $Statement = $this->pdo->prepare("select Id, Date, ReminderTime, Aftercare, 
-                                                    Reason, Diagnosis from Appointment where Id = :AId");
-
-        if($Statement->execute([':AId' => $id])) {
+        $Statement = $this->pdo->prepare("select Appointment.Id, Doctor.Name, Appointment.Date, Doctor.Address,
+                                                    Appointment.Reason, Appointment.Diagnosis, Appointment.Aftercare
+                                                    from Appointment
+                                                    join Doctor on Appointment.DId = Doctor.Id
+                                                    where Appointment.Id = :Id");
+        if($Statement->execute([':Id' => $id])){
             foreach ($Statement as $row) {
-                $ReturnString = implode("///", $row);
+                $ReturnString .= implode("///", $row);
                 $ReturnString .= "///";
             }
-                $ReturnString .= $this->GetPrescriptionWithAId($id);
-                $ReturnString .= $this->GetVaccineWithAId($id);
-                $ReturnString .= $this->GetDoctorAId($id);
-                return $ReturnString;
         }
-        else
+        $ReturnString .= $this->GetPrescriptionWithAId($id);
+        $ReturnString .= $this->GetVaccineWithAId($id);
+        return $ReturnString;
+    }
+    public function GetPrescription(int $id)
+    {
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("select Prescription.Id, Prescription.Name, 
+                                                    Prescription.StartDate, Prescription.EndDate, 
+                                                    Prescription.ReminderTime, Doctor.Name as DName 
+                                                    from Prescription 
+                                                    join Doctor on Prescription.DId = Doctor.Id 
+                                                    where Prescription.Id=:PId");
+        if($Statement->execute([':PId' => $id]))
         {
-            return null;
+            foreach($Statement as $row)
+            {
+                $ReturnString = implode("///", $row);
+                $ReturnString .= "///";
+                return $ReturnString;
+            }
         }
     }
     public function GetPrescriptionWithAId(int $AId):string
@@ -387,23 +511,314 @@ class Database
         $ReturnString .= "abcdefabc///";
         return $ReturnString;
     }
-    public function GetAppointmentsPictures(int $id)
+    public function GetRootFolder(int $Id):string
     {
-        $a = "";
-        $Statement = $this->pdo->prepare("select Appointment.Picture
-                                                    from Appointment
-                                                    where Appointment.UId = :UId");
-        if($Statement->execute([':UId' => $id]))
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("select Id
+                                                    from Folder
+                                                    where UId = :Id and IsRoot=true");
+        if ($Statement->execute([':Id' => $Id]))
         {
-            foreach($Statement->fetch() as $row)
+            if($Statement->rowCount())
             {
-                echo $row['Picture'];
+                foreach($Statement as $row)
+                {
+                    $ReturnString .= implode("", $row);
+                }
+                return $ReturnString;
             }
-            return null;
+            $this->AddRootFolder($Id);
+            return $this->GetRootFolder($Id);
+        }
+    }
+    public function GetNote(int $Id)
+    {
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("select Name, Description
+                                                    from Note
+                                                    where Id = :Id");
+        if($Statement->execute([':Id' => $Id]))
+        {
+            if($Statement->rowCount())
+            {
+                foreach($Statement as $row)
+                {
+                    $ReturnString .= implode("///", $row);
+                    $ReturnString .= "///";
+                }
+                return $ReturnString;
+            }
+        }
+        return $Statement->errorInfo();
+    }
+
+    //Get users on account
+    public function GetUsers(Account $Account)
+    {
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("select * from User where AId = :AId");
+        if($Statement->execute([':AId' => $Account->GetId()]))
+        {
+            foreach($Statement as $row)
+            {
+                $ReturnString .= implode("///", $row);
+                $ReturnString .= "///";
+            }
+            return $ReturnString;
         }
         else
         {
             return null;
         }
+    }
+    //Gets all doctors with user
+    public function GetDoctors(int $id)
+    {
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("select Doctor.* from Doctor
+                                                    join User_Doctor_Junction on Doctor.Id = User_Doctor_Junction.DId
+                                                    where User_Doctor_Junction.UId = :UId");
+        if($Statement->execute([':UId' => $id]))
+        {
+            foreach($Statement as $row)
+            {
+                $ReturnString .= implode("///", $row);
+                $ReturnString .= "///";
+            }
+
+            return $ReturnString;
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+    //Gets all appointments with user
+    public function GetAppointments(int $id)
+    {
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("select Appointment.Id, Doctor.Name, Appointment.Date, Doctor.Address,
+                                                    Appointment.Reason, Appointment.Diagnosis, Appointment.Aftercare
+                                                    from Appointment
+                                                    join Doctor on Appointment.DId = Doctor.Id
+                                                    where Appointment.UId = :UId");
+        if ($Statement->execute([':UId' => $id])) {
+            foreach ($Statement as $row) {
+                $ReturnString .= implode("///", $row);
+                $ReturnString .= "///";
+            }
+            return $ReturnString;
+        } else {
+            return null;
+        }
+    }
+    public function GetFutureAppointments(int $id)
+    {
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("select Appointment.Id, User.Name as UName, 
+                                                           Doctor.Name, Appointment.ReminderTime
+                                                    from Appointment
+                                                    join Doctor on Appointment.DId = Doctor.Id
+                                                    join User on Appointment.UId = User.Id
+                                                    where Appointment.UId = :UId and Appointment.ReminderTime > sysdate()");
+        if($Statement->execute([':UId' => $id]))
+        {
+            foreach($Statement as $row)
+            {
+                $ReturnString .= implode("///", $row);
+                $ReturnString .= "///";
+            }
+            return $ReturnString;
+        }
+        else
+        {
+            return null;
+        }
+    }
+    public function GetAllAppointments(int $AId)
+    {
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("select Id
+                                         from User
+                                         where AId = :AId");
+        if($Statement->execute([':AId' => $AId]))
+        {
+            foreach($Statement as $row)
+            {
+                $User = (int)$row['Id'];
+                $Statement1 = $this->pdo->prepare("select Appointment.Date, User.Name as UName, Doctor.Name
+                                                             from Appointment
+                                                             join Doctor on Appointment.DId = Doctor.Id
+                                                             join User on Appointment.UId = User.Id
+                                                             where Appointment.UId = :UId");
+                if($Statement1->execute([':UId' => $User]))
+                {
+                    foreach($Statement1 as $row1)
+                    {
+                        $ReturnString .= implode("///", $row1);
+                        $ReturnString .= "///";
+                    }
+                }
+            }
+        }
+        return $ReturnString;
+    }
+
+
+    public function GetConditions(int $id)
+    {
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("select Conditions.Type
+                                                    from Conditions
+                                                    join Conditions_User_Junction on Conditions_User_Junction.CId = Conditions.Type
+                                                    where UId = :UId");
+        if($Statement->execute(['UId' => $id])) {
+            foreach ($Statement as $row) {
+                $ReturnString .= implode("///", $row);
+                $ReturnString .= "///";
+            }
+            return $ReturnString;
+        }
+        else
+        {
+            return $Statement->errorInfo();
+        }
+    }
+    public function GetAllergies(int $id)
+    {
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("select Allergy.Type
+                                                    from Allergy
+                                                    join User_Allergy_Junction on User_Allergy_Junction.AId = Allergy.Type
+                                                    where UId = :UId");
+        if($Statement->execute(['UId' => $id]))
+        {
+            foreach ($Statement as $row)
+            {
+                $ReturnString .= implode("///", $row);
+                $ReturnString .= "///";
+            }
+            return $ReturnString;
+        }
+        else
+        {
+            return $Statement->errorInfo();
+        }
+    }
+    public function GetVaccines(int $id)
+    {
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("select Vaccine.Name, Vaccine.Date
+                                                    from Vaccine
+                                                    where UId = :UId");
+        if($Statement->execute([':UId' => $id])) {
+            foreach ($Statement as $row) {
+                $ReturnString .= implode("///", $row);
+                $ReturnString .= "///";
+            }
+            return $ReturnString;
+        }
+        return $Statement->errorInfo();
+    }
+    public function GetPrescriptions(int $id)
+    {
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("select Prescription.Id, Prescription.Name, 
+                                                    Prescription.StartDate, Prescription.EndDate, 
+                                                    Prescription.ReminderTime, Doctor.Name as DName
+                                                    from Prescription
+                                                    join Doctor on Prescription.DId = Doctor.Id
+                                                    where UId = :UId");
+        if($Statement->execute([':UId' => $id]))
+        {
+            foreach($Statement as $row)
+            {
+                $ReturnString .= implode("///", $row);
+                $ReturnString .= "///";
+            }
+            return $ReturnString;
+        }
+        return $Statement->errorInfo();
+    }
+    public function GetChildFolders(int $Id)
+    {
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("select Id, Name, CreationDate
+                                                    from Folder
+                                                    where ParentFolderId = :Id");
+        if($Statement->execute([':Id' => $Id]))
+        {
+            foreach($Statement as $row)
+            {
+                $ReturnString .= implode("///", $row);
+                $ReturnString .= "///";
+            }
+            return $ReturnString;
+        }
+        return $Statement->errorInfo();
+    }
+    public function GetChildNotes(int $Id)
+    {
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("select Id, Name, CreationDate
+                                                    from Note
+                                                    where ParentFolderId = :Id");
+        if($Statement->execute([':Id' => $Id]))
+        {
+            foreach($Statement as $row)
+            {
+                $ReturnString .= implode("///", $row);
+                $ReturnString .= "///";
+            }
+            return $ReturnString;
+        }
+        return $Statement->errorInfo();
+    }
+    public function DeleteCondition(int $Id, string $Type)
+    {
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("delete
+                                                    from Conditions_User_Junction
+                                                    where UId = :UId and CId = :CId");
+        $Statement->execute([
+            ':UId' => $Id,
+            ':CId' => $Type
+        ]);
+        if(!$Statement->rowCount())
+        {
+            return $Statement->errorInfo();
+        }
+        return 'Success';
+    }
+    public function DeleteAllergy(int $Id, string $Type)
+    {
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("delete
+                                                    from User_Allergy_Junction
+                                                    where UId = :UId and AId = :AId");
+        $Statement->execute([
+            ':UId' => $Id,
+            ':AId' => $Type
+        ]);
+        if(!$Statement->rowCount())
+        {
+            return $Statement->errorCode();
+        }
+        return 'Success';
+    }
+    public function DeleteNote(int $Id)
+    {
+        $ReturnString = "";
+        $Statement = $this->pdo->prepare("delete from Note
+                                                    where Id = :Id");
+        $Statement->execute([
+            ':Id' => $Id
+        ]);
+        if(!$Statement->rowCount())
+        {
+            return (string)$Id;
+        }
+        return 'Success';
     }
 }
