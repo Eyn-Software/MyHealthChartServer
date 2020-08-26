@@ -163,6 +163,10 @@ else if($_POST['Function'] === 'AddAppointment')
 }
 else if($_POST['Function'] === 'AppointmentPicture')
 {
+    echo 'b';
+}
+else if($_FILES['AppointmentPicture'])
+{
     echo 'c';
 }
 else if($_POST['Function'] === 'AddPrescription')
@@ -242,4 +246,8 @@ else if($_POST['Function'] === 'DeleteNote')
     $Note = new NoteDelete();
     $error = $Note->handle();
     echo $error;
+}
+else
+{
+    echo $_POST['Image'];
 }
